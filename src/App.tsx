@@ -14,7 +14,7 @@ const fallback: Summary = { mode:"demo", availableBalance:"0.00", pendingBalance
   {id:"AP-2046",customer:"Customer C",asset:"BTC",amount:"0.0018",status:"confirmed",date:"Yesterday"}
 ]};
 function App() {
-  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
+  if (window.location.pathname.startsWith("/admin")) return <AdminPage />;\n  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
   const [page,setPage] = useState("Overview");
   const [summary,setSummary] = useState<Summary>(fallback);
   const [menu,setMenu] = useState(false);
@@ -45,7 +45,33 @@ function App() {
   </div>;
 }
 
-function CheckoutPage() {
+
+function AdminPage() {
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [admin,setAdmin] = useState<{email:string;role:string}|null>(null);
+  const [error,setError] = useState("");
+  const [loading,setLoading] = useState(true);
+  const [section,setSection] = useState("Overview");
+  const [dataReady,setDataReady] = useState(false);
+  useEffect(()=>{ fetch("/api/admin/me",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>{if(d?.authenticated)setAdmin(d.admin);}).catch(()=>{}).finally(()=>setLoading(false)); },[]);
+  async function login(e:React.FormEvent) {
+    e.preventDefault(); setError(""); setLoading(true);
+    try {
+      const r=await fetch("/api/admin/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
+      const d=await r.json(); if(!r.ok) throw new Error(d.error||"Login failed");
+      setAdmin(d.admin); setPassword("");
+    } catch(err) { setError(err instanceof Error?err.message:"Unable to sign in."); }
+    finally { setLoading(false); }
+  }
+  async function logout(){ await fetch("/api/admin/logout",{method:"POST",credentials:"same-origin"}); setAdmin(null); setSection("Overview"); }
+  useEffect(()=>{ if(admin) fetch("/api/admin/overview",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>setDataReady(Boolean(d?.dataConnected))).catch(()=>{}); },[admin]);
+  if(loading) return <div className="admin-loading">AnimePay · Checking admin session…</div>;
+  if(!admin) return <div className="admin-login-shell"><div className="admin-login-card"><a className="admin-brand" href="/"><span>A</span> AnimePay <small>ADMIN</small></a><div className="admin-lock">⌑</div><h1>Admin sign in</h1><p>Sign in to manage the AnimePay platform.</p><form onSubmit={login}><label htmlFor="admin-email">Email address</label><input id="admin-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required/><label htmlFor="admin-password">Password</label><input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/><button className="admin-login-button" disabled={loading}>{loading?"Signing in…":"Sign in securely"}</button>{error&&<div className="admin-error">{error}</div>}</form><small className="admin-login-foot">Restricted administrator access · No public registration</small></div></div>;
+  const items=["Overview","Payments","Merchants","Withdrawals","Provider","Audit log","Settings"];
+  return <div className="admin-shell"><aside className="admin-sidebar"><a className="admin-brand" href="/"><span>A</span> AnimePay <small>ADMIN</small></a><div className="admin-side-label">CONTROL CENTER</div>{items.map(x=><button key={x} className={section===x?"admin-nav active":"admin-nav"} onClick={()=>setSection(x)}>{x}</button>)}<div className="admin-side-bottom"><span>{admin.email}</span><button onClick={logout}>Sign out ↗</button></div></aside><main className="admin-main"><header className="admin-top"><div><small>ANIMEPAY / ADMIN</small><h1>{section}</h1></div><span className="admin-role">● ADMIN</span></header><div className="admin-content">{section==="Overview"? <><div className="admin-welcome"><div><b>Platform control center</b><p>Admin authentication is active. Financial operations remain locked until production data and payment controls are connected.</p></div><span>SECURE SESSION</span></div><div className="admin-stat-grid">{[["Payments","—"],["Merchants","—"],["Pending withdrawals","—"],["Payment volume","—"]].map(x=><div className="admin-stat" key={x[0]}><small>{x[0]}</small><strong>{x[1]}</strong><span>Database not connected</span></div>)}</div><section className="admin-panel"><h2>System readiness</h2><div className="admin-readiness"><span>Admin authentication</span><b className="ready">ACTIVE</b></div><div className="admin-readiness"><span>Payment database</span><b className="not-ready">NOT CONNECTED</b></div><div className="admin-readiness"><span>NOWPayments live processing</span><b className="not-ready">NOT CONNECTED</b></div><div className="admin-readiness"><span>Withdrawal controls</span><b className="not-ready">DISABLED</b></div></section></>:<section className="admin-panel"><h2>{section}</h2><p>{section==="Payments"?"Verified payment records will appear here after the payment database and webhook ledger are connected.":section==="Merchants"?"Merchant management requires persistent accounts and role permissions.":section==="Withdrawals"?"Payout approvals remain disabled until custody, compliance and ledger controls are ready.":section==="Provider"?"Configure NOWPayments credentials in server-side Vercel environment variables.":section==="Audit log"?"Administrative actions will be recorded here when persistent audit storage is connected.":"Admin security and platform configuration."}</p><span className="not-ready">FEATURE LOCKED · BACKEND SETUP REQUIRED</span></section>}</div></main></div>;
+}
+\nfunction CheckoutPage() {
   const params = new URLSearchParams(window.location.search);
   const amount = params.get("amount") || "25.00";
   const currency = params.get("currency") || "USD";
