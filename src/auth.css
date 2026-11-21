@@ -26,3 +26,7 @@
 .auth-submit{background:linear-gradient(110deg,#a18aff,#765ce0 55%,#55cfc9);background-size:200% 100%;animation:ap-border-flow 6s linear infinite}
 .auth-security svg{filter:drop-shadow(0 0 5px #8e7ce0)}
 @media(max-width:600px){.auth-glow-a,.auth-glow-b{filter:blur(70px);opacity:.15}}
+
+.auth-forgot{justify-self:end;border:0;background:none;color:#b8a6ff;font:600 11px 'DM Sans';cursor:pointer;padding:5px 0}
+.auth-switch a{color:#b8a6ff;text-decoration:none;font-weight:700}
+.auth-switch a:hover,.auth-forgot:hover{text-decoration:underline}
