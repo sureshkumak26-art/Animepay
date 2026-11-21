@@ -1,1 +1,1 @@
-export { default } from "../[...path]";
+export { default } from "../../lib/api-handler";
