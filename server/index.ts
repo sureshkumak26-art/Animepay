@@ -368,7 +368,7 @@ app.patch("/api/admin/merchant-members/:id", requireSameOrigin, requireAdmin, as
 
 app.post("/api/merchant/logo", requireSameOrigin, requireMerchant, async (req, res) => {
   const dataUrl = String(req.body?.image || "");
-  const match = dataUrl.match(/^data:(image\\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!match) return res.status(400).json({ error: "Upload a PNG, JPG or WebP image." });
   const mime = match[1], buffer = Buffer.from(match[2], "base64");
   if (!buffer.length || buffer.length > 1024 * 1024) return res.status(400).json({ error: "Logo must be smaller than 1 MB." });
