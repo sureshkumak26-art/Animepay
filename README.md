@@ -46,3 +46,21 @@ Deploy the frontend and API as one Node service, or configure a reverse proxy so
 ## Security notice
 
 Do not use demo balances, sample payment statuses, or this scaffold to represent real funds. No private keys, deposit address derivation, blockchain confirmation monitoring, or actual payouts are implemented.
+
+## Admin panel (Vercel)
+
+The separate administrator console is available at `/admin`. It uses a server-verified admin role, an HttpOnly/Secure/SameSite cookie, an 8-hour signed session, same-origin checks, and a login rate limit. There is no public admin registration. The merchant dashboard remains separate.
+
+Set these **server-side** Vercel Environment Variables for Production:
+- `ADMIN_EMAIL`: the administrator email address.
+- `ADMIN_PASSWORD_HASH`: bcrypt hash of the administrator password (cost factor 12 or higher).
+- `SESSION_SECRET`: a cryptographically random value of at least 32 characters.
+- `NODE_ENV=production`.
+
+Generate a bcrypt hash locally after installing dependencies:
+```bash
+node --input-type=module -e "import bcrypt from 'bcryptjs'; console.log(await bcrypt.hash('REPLACE_WITH_A_LONG_UNIQUE_PASSWORD', 12))"
+```
+Copy only the generated hash into `ADMIN_PASSWORD_HASH`; do not commit it or paste it into chat. Use a password manager and rotate it if exposed.
+
+Vercel serverless entrypoint: `api/[...path].ts`. Deploy the project with the repository root as the Vercel project root. This adds admin authentication only: payment records, merchants, withdrawals, provider management and audit events remain locked until a persistent database, verified payment webhooks and compliance controls are implemented. Do not treat empty admin metrics as live financial data.
