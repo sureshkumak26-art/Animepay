@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Code2, CreditCard, Download, Eye, FileKey2, Globe2, LayoutDashboard, LifeBuoy, Menu, Plus, Search, Settings, ShieldCheck, Wallet, Webhook, X } from "lucide-react";
 import Landing from "./Landing";
 import MerchantAuth from "./MerchantAuth";
+import ResetPassword from "./ResetPassword";
 import type { ReactNode } from "react";
 
 type Payment = { id: string; customer: string; asset: string; amount: string; status: string; date: string };
@@ -17,6 +18,7 @@ function App() {
   if (path.startsWith("/admin")) return <AdminPage />;
   if (path.startsWith("/checkout")) return <MerchantGate><CheckoutPage /></MerchantGate>;
   if (path.startsWith("/pay/")) return <PublicPaymentPage slug={path.split("/")[2] || ""} />;
+  if (path === "/reset-password") return <ResetPassword />;
   if (path === "/login" || path === "/signup") return <MerchantAuth mode={path === "/signup" ? "signup" : "login"} />;
   if (path !== "/dashboard") return <Landing />;
   return <MerchantGate><DashboardApp /></MerchantGate>;
