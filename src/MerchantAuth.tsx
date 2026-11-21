@@ -13,18 +13,26 @@ export default function MerchantAuth({ mode: initialMode }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [forgotPassword, setForgotPassword] = useState(false);
   const verified = mode === "login" && new URLSearchParams(window.location.search).get("verified") === "1";
 
   function switchMode(next: "login" | "signup") {
-    setMode(next); setError(""); setMessage("");
+    setMode(next); setForgotPassword(false); setError(""); setMessage("");
     window.history.replaceState({}, "", next === "signup" ? "/signup" : "/login");
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault(); setError(""); setMessage(""); setLoading(true);
     try {
-      const endpoint = mode === "signup" ? "/api/merchant/signup" : "/api/merchant/login";
       const normalizedEmail = email.trim().toLowerCase();
+      if (forgotPassword) {
+        const response = await fetch("/api/merchant/forgot-password", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Could not request a password reset.");
+        setMessage(data.message || "If an account exists, a reset link has been sent. Check your inbox.");
+        return;
+      }
+      const endpoint = mode === "signup" ? "/api/merchant/signup" : "/api/merchant/login";
       const body = mode === "signup" ? { full_name: fullName, company, email: normalizedEmail, password } : { email: normalizedEmail, password };
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json().catch(() => ({}));
@@ -42,11 +50,11 @@ export default function MerchantAuth({ mode: initialMode }: Props) {
     <section className="auth-card">
       <div className="auth-icon"><ShieldCheck size={22}/></div>
       <div className="auth-eyebrow">MERCHANT WORKSPACE</div>
-      <h1>{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
-      <p className="auth-subtitle">{mode === "signup" ? "Set up your merchant workspace to start managing crypto payments." : "Sign in to access your secure merchant dashboard."}</p>
+      <h1>{forgotPassword ? "Reset your password" : mode === "signup" ? "Create your account" : "Welcome back"}</h1>
+      <p className="auth-subtitle">{forgotPassword ? "Enter your account email and we’ll send you a secure password reset link." : mode === "signup" ? "Set up your merchant workspace to start managing crypto payments." : "Sign in to access your secure merchant dashboard."}</p>
       {verified && <div className="auth-success">Email verified. You can now sign in.</div>}
       <form onSubmit={submit}>
-        {mode === "signup" && <>
+        {!forgotPassword && mode === "signup" && <>
           <label htmlFor="auth-full-name">Full name</label>
           <input id="auth-full-name" autoComplete="name" value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Your full name" minLength={2} maxLength={100} required/>
           <label htmlFor="auth-company">Business name <span>Optional</span></label>
@@ -54,13 +62,14 @@ export default function MerchantAuth({ mode: initialMode }: Props) {
         </>}
         <label htmlFor="auth-email">Email address</label>
         <input id="auth-email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value.trim())} placeholder="you@example.com" autoCapitalize="none" spellCheck={false} required/>
-        <label htmlFor="auth-password">Password {mode === "signup" && <span>10+ characters</span>}</label>
-        <div className="auth-password-wrap"><input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" minLength={mode === "signup" ? 10 : 1} required/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div>
+        {!forgotPassword && <><label htmlFor="auth-password">Password {mode === "signup" && <span>10+ characters</span>}</label>
+        <div className="auth-password-wrap"><input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" minLength={mode === "signup" ? 10 : 1} required/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div></>}
         {error && <div className="auth-error">{error}</div>}
         {message && <div className="auth-success">{message}</div>}
-        <button className="auth-submit" disabled={loading}>{loading ? "Please wait…" : mode === "signup" ? "Create merchant account" : "Sign in securely"} <ArrowRight size={17}/></button>
+        {!forgotPassword && mode === "login" && <button type="button" className="auth-forgot" onClick={()=>{setForgotPassword(true);setError("");setMessage("");}}>Forgot password?</button>}
+        <button className="auth-submit" disabled={loading}>{loading ? "Please wait…" : forgotPassword ? "Send reset link" : mode === "signup" ? "Create merchant account" : "Sign in securely"} <ArrowRight size={17}/></button>
       </form>
-      <div className="auth-switch">{mode === "signup" ? "Already have an account?" : "New to AnimePay?"} <button onClick={()=>switchMode(mode === "signup" ? "login" : "signup")}>{mode === "signup" ? "Sign in" : "Create account"}</button></div>
+      <div className="auth-switch">{forgotPassword ? "Remembered your password?" : mode === "signup" ? "Already have an account?" : "New to AnimePay?"} <button onClick={()=>forgotPassword ? (setForgotPassword(false),setError(""),setMessage("")) : switchMode(mode === "signup" ? "login" : "signup")}>{forgotPassword ? "Back to sign in" : mode === "signup" ? "Sign in" : "Create account"}</button></div>
       <div className="auth-security"><ShieldCheck size={14}/> Passwords are securely managed by Supabase Auth.</div>
     </section>
     <footer className="auth-footer">© {new Date().getFullYear()} AnimePay · Secure crypto payments</footer>
