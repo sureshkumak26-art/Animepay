@@ -15,7 +15,7 @@ const emptySummary: Summary = { mode:"live", availableBalance:"0.00", pendingBal
 function App() {
   const path = window.location.pathname;
   if (path.startsWith("/admin")) return <AdminPage />;
-  if (path.startsWith("/checkout")) return <CheckoutPage />;
+  if (path.startsWith("/checkout")) return <MerchantGate><CheckoutPage /></MerchantGate>;
   if (path === "/login" || path === "/signup") return <MerchantAuth mode={path === "/signup" ? "signup" : "login"} />;
   if (path !== "/dashboard") return <Landing />;
   return <MerchantGate><DashboardApp /></MerchantGate>;
@@ -174,14 +174,12 @@ function MerchantManagement() {
 }
 
 function CheckoutPage() {
-  const params = new URLSearchParams(window.location.search);
-  const amount = params.get("amount") || "25.00";
-  const currency = params.get("currency") || "USD";
-  const invoice = params.get("invoice") || "AP-DEMO-001";
+  const [amount,setAmount] = useState("");
   const [asset,setAsset] = useState("usdttrc20");
   const [network,setNetwork] = useState("TRON");
   const [busy,setBusy] = useState(false);
   const [message,setMessage] = useState("");
+  const [result,setResult] = useState<any>(null);
   const assets = [
     {id:"usdttrc20",name:"Tether USD",ticker:"USDT",network:"TRON",symbol:"₮"},
     {id:"usdterc20",name:"Tether USD",ticker:"USDT",network:"Ethereum",symbol:"₮"},
@@ -189,38 +187,43 @@ function CheckoutPage() {
     {id:"eth",name:"Ethereum",ticker:"ETH",network:"Ethereum",symbol:"Ξ"},
     {id:"usdc",name:"USD Coin",ticker:"USDC",network:"Ethereum",symbol:"＄"}
   ];
-  const selected=assets.find(x=>x.id===asset)||assets[0];
   async function createPayment(){
-    setBusy(true);setMessage("");
+    setMessage("");setResult(null);
+    if(!Number.isFinite(Number(amount)) || Number(amount)<=0){setMessage("Enter a valid invoice amount greater than zero.");return;}
+    setBusy(true);
     try {
-      const response=await fetch("/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({price_amount:Number(amount),price_currency:currency.toLowerCase(),pay_currency:asset,order_id:invoice})});
-      const data=await response.json();
-      setMessage(data.error||"Payment request could not be created.");
-    } catch { setMessage("Checkout API is unavailable. Please try again later."); }
+      const response=await fetch("/api/checkout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({price_amount:Number(amount),price_currency:"usd",pay_currency:asset})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||"Payment request could not be created.");
+      setResult(data);
+    } catch(err) { setMessage(err instanceof Error?err.message:"Checkout API is unavailable. Please try again later."); }
     finally { setBusy(false); }
   }
   return <div className="checkout-shell">
-    <header className="checkout-top"><a className="checkout-brand" href="/"><span>A</span> AnimePay</a><div><ShieldCheck size={15}/> Secure checkout preview</div></header>
+    <header className="checkout-top"><a className="checkout-brand" href="/dashboard"><span>A</span> AnimePay</a><div><ShieldCheck size={15}/> Merchant invoice builder</div></header>
     <main className="checkout-main">
-      <div className="checkout-intro"><span className="checkout-kicker">PAYMENT REQUEST</span><h1>Complete your payment</h1><p>Choose a cryptocurrency and network to continue.</p></div>
+      <div className="checkout-intro"><span className="checkout-kicker">MERCHANT WORKSPACE</span><h1>Create a payment invoice</h1><p>Choose the amount, currency and network for your customer.</p></div>
       <div className="checkout-layout">
         <section className="checkout-card">
-          <div className="checkout-card-head"><div><span className="merchant-avatar">AC</span><div><b>Anime Cloud</b><small>Payment to merchant</small></div></div><span className="demo-pill">DEMO</span></div>
-          <div className="checkout-amount"><small>YOU ARE PAYING</small><strong>{currency.toUpperCase()} {amount}</strong><span>Invoice {invoice}</span></div>
+          <div className="checkout-card-head"><div><span className="merchant-avatar">A</span><div><b>Your merchant account</b><small>New crypto payment request</small></div></div><span className="demo-pill">SECURE</span></div>
+          <div className="checkout-amount"><small>INVOICE AMOUNT</small><strong>USD {amount || "—"}</strong><span>{result?.order_id ? "Invoice "+result.order_id : "Invoice reference generated after creation"}</span></div>
+          <label className="checkout-label" htmlFor="invoice-amount">Amount in USD</label>
+          <input id="invoice-amount" className="checkout-amount-input" type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="25.00" value={amount} onChange={e=>setAmount(e.target.value)}/>
           <label className="checkout-label" htmlFor="pay-asset">Select payment currency</label>
-          <div className="asset-options">{assets.map(item=><button key={item.id} className={asset===item.id?"asset-option selected":"asset-option"} onClick={()=>{setAsset(item.id);setNetwork(item.network);}}><span>{item.symbol}</span><div><b>{item.ticker}</b><small>{item.name}</small></div><i>{item.network}</i></button>)}</div>
+          <div className="asset-options">{assets.map(item=><button type="button" key={item.id} className={asset===item.id?"asset-option selected":"asset-option"} onClick={()=>{setAsset(item.id);setNetwork(item.network);setResult(null);}}><span>{item.symbol}</span><div><b>{item.ticker}</b><small>{item.name}</small></div><i>{item.network}</i></button>)}</div>
           <div className="network-line"><span>Network</span><b>{network}</b></div>
-          <button className="checkout-submit" onClick={createPayment} disabled={busy}>{busy?"Creating…":"Continue to payment"} <ArrowUpRight size={17}/></button>
+          <button className="checkout-submit" onClick={createPayment} disabled={busy}>{busy?"Creating invoice…":"Create payment invoice"} <ArrowUpRight size={17}/></button>
           {message&&<div className="checkout-message">{message}</div>}
-          <p className="checkout-disclaimer">This is a checkout UI preview. Payment creation is disabled until a verified payment provider is connected.</p>
+          {result?.invoice_url&&<div className="checkout-result"><b>Invoice created successfully</b><span>Order: {result.order_id}</span><a href={result.invoice_url} target="_blank" rel="noreferrer">Open customer payment page ↗</a></div>}
+          <p className="checkout-disclaimer">Invoices are created from your authenticated merchant account. Provider status is verified on the server before payment records are updated.</p>
         </section>
         <aside className="checkout-side">
-          <div className="qr-placeholder"><div className="qr-icon">▦</div><b>Payment QR appears here</b><small>Generated securely after invoice creation</small></div>
-          <div className="checkout-secure"><ShieldCheck size={17}/><div><b>Protected payment flow</b><small>Always verify the address, network and amount before sending crypto.</small></div></div>
-          <div className="checkout-help"><CircleHelp size={16}/><span>Need help? Contact the merchant.</span></div>
+          <div className="qr-placeholder">{result?.pay_address?<><b>Payment destination</b><small>{result.pay_amount} {String(result.pay_currency||asset).toUpperCase()}</small><code>{result.pay_address}</code></>:<><div className="qr-icon">▦</div><b>Payment details appear here</b><small>Create an invoice to generate the provider payment address.</small></>}</div>
+          <div className="checkout-secure"><ShieldCheck size={17}/><div><b>Protected payment flow</b><small>Payment invoices are associated with your merchant account and verified by the server.</small></div></div>
+          <div className="checkout-help"><CircleHelp size={16}/><span>Never share provider API secrets with customers.</span></div>
         </aside>
       </div>
-      <footer className="checkout-footer">Powered by <b>AnimePay</b> <span>•</span> Never send funds to an address shown outside this checkout.</footer>
+      <footer className="checkout-footer"><a href="/dashboard">← Back to dashboard</a> <span>•</span> Powered by <b>AnimePay</b></footer>
     </main>
   </div>;
 }
