@@ -1,4 +1,4 @@
 import serverless from "serverless-http";
-import app from "../server/index";
+import app from "../server/index.ts";
 
 export default serverless(app);
