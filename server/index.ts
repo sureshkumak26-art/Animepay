@@ -61,10 +61,11 @@ const supabaseUrl = () => (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const supabaseKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 async function db(pathname: string, init: RequestInit = {}) {
   if (!supabaseUrl() || !supabaseKey()) throw new Error("Supabase server credentials are not configured.");
-  const response = await fetch(supabaseUrl() + "/rest/v1/" + pathname, {
-    ...init,
-    headers: { apikey: supabaseKey(), Authorization: "Bearer " + supabaseKey(), "Content-Type": "application/json", ...(init.headers || {}) }
-  });
+  const headers = new Headers(init.headers);
+  headers.set("apikey", supabaseKey());
+  headers.set("Authorization", "Bearer " + supabaseKey());
+  headers.set("Content-Type", "application/json");
+  const response = await fetch(supabaseUrl() + "/rest/v1/" + pathname, { ...init, headers });
   const body = await response.text();
   if (!response.ok) throw new Error("Database request failed (" + response.status + "): " + body.slice(0, 300));
   return body ? JSON.parse(body) : null;
