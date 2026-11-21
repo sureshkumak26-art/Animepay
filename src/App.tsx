@@ -14,7 +14,8 @@ const fallback: Summary = { mode:"demo", availableBalance:"0.00", pendingBalance
   {id:"AP-2046",customer:"Customer C",asset:"BTC",amount:"0.0018",status:"confirmed",date:"Yesterday"}
 ]};
 function App() {
-  if (window.location.pathname.startsWith("/admin")) return <AdminPage />;\n  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
+  if (window.location.pathname.startsWith("/admin")) return <AdminPage />;
+  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
   const [page,setPage] = useState("Overview");
   const [summary,setSummary] = useState<Summary>(fallback);
   const [menu,setMenu] = useState(false);
@@ -69,7 +70,8 @@ function AdminPage() {
   const items=["Overview","Payments","Merchants","Withdrawals","Provider","Audit log","Settings"];
   return <div className="admin-shell"><aside className="admin-sidebar"><a className="admin-brand" href="/"><span>A</span> AnimePay <small>ADMIN</small></a><div className="admin-side-label">CONTROL CENTER</div>{items.map(x=><button key={x} className={section===x?"admin-nav active":"admin-nav"} onClick={()=>setSection(x)}>{x}</button>)}<div className="admin-side-bottom"><span>{admin.email}</span><button onClick={logout}>Sign out ↗</button></div></aside><main className="admin-main"><header className="admin-top"><div><small>ANIMEPAY / ADMIN</small><h1>{section}</h1></div><span className="admin-role">● ADMIN</span></header><div className="admin-content">{section==="Overview"? <><div className="admin-welcome"><div><b>Platform control center</b><p>Admin authentication is active. Financial operations remain locked until production data and payment controls are connected.</p></div><span>SECURE SESSION</span></div><div className="admin-stat-grid">{[["Payments","—"],["Merchants","—"],["Pending withdrawals","—"],["Payment volume","—"]].map(x=><div className="admin-stat" key={x[0]}><small>{x[0]}</small><strong>{x[1]}</strong><span>Database not connected</span></div>)}</div><section className="admin-panel"><h2>System readiness</h2><div className="admin-readiness"><span>Admin authentication</span><b className="ready">ACTIVE</b></div><div className="admin-readiness"><span>Payment database</span><b className="not-ready">NOT CONNECTED</b></div><div className="admin-readiness"><span>NOWPayments live processing</span><b className="not-ready">NOT CONNECTED</b></div><div className="admin-readiness"><span>Withdrawal controls</span><b className="not-ready">DISABLED</b></div></section></>:<section className="admin-panel"><h2>{section}</h2><p>{section==="Payments"?"Verified payment records will appear here after the payment database and webhook ledger are connected.":section==="Merchants"?"Merchant management requires persistent accounts and role permissions.":section==="Withdrawals"?"Payout approvals remain disabled until custody, compliance and ledger controls are ready.":section==="Provider"?"Configure NOWPayments credentials in server-side Vercel environment variables.":section==="Audit log"?"Administrative actions will be recorded here when persistent audit storage is connected.":"Admin security and platform configuration."}</p><span className="not-ready">FEATURE LOCKED · BACKEND SETUP REQUIRED</span></section>}</div></main></div>;
 }
-\nfunction CheckoutPage() {
+
+function CheckoutPage() {
   const params = new URLSearchParams(window.location.search);
   const amount = params.get("amount") || "25.00";
   const currency = params.get("currency") || "USD";
