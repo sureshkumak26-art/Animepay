@@ -24,7 +24,8 @@ export default function MerchantAuth({ mode: initialMode }: Props) {
     e.preventDefault(); setError(""); setMessage(""); setLoading(true);
     try {
       const endpoint = mode === "signup" ? "/api/merchant/signup" : "/api/merchant/login";
-      const body = mode === "signup" ? { full_name: fullName, company, email, password } : { email, password };
+      const normalizedEmail = email.trim().toLowerCase();
+      const body = mode === "signup" ? { full_name: fullName, company, email: normalizedEmail, password } : { email: normalizedEmail, password };
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Authentication failed. Please try again.");
@@ -52,7 +53,7 @@ export default function MerchantAuth({ mode: initialMode }: Props) {
           <input id="auth-company" autoComplete="organization" value={company} onChange={e=>setCompany(e.target.value)} placeholder="Your business or brand" maxLength={100}/>
         </>}
         <label htmlFor="auth-email">Email address</label>
-        <input id="auth-email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/>
+        <input id="auth-email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value.trim())} placeholder="you@example.com" autoCapitalize="none" spellCheck={false} required/>
         <label htmlFor="auth-password">Password {mode === "signup" && <span>10+ characters</span>}</label>
         <div className="auth-password-wrap"><input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" minLength={mode === "signup" ? 10 : 1} required/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div>
         {error && <div className="auth-error">{error}</div>}
