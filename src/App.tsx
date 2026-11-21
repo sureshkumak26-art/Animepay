@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Code2, CreditCard, Download, Eye, FileKey2, Globe2, LayoutDashboard, LifeBuoy, Menu, Plus, Search, Settings, ShieldCheck, Wallet, Webhook, X } from "lucide-react";
 
 type Payment = { id: string; customer: string; asset: string; amount: string; status: string; date: string };
@@ -53,9 +53,8 @@ function AdminPage() {
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
   const [section,setSection] = useState("Overview");
-  const [dataReady,setDataReady] = useState(false);
   useEffect(()=>{ fetch("/api/admin/me",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>{if(d?.authenticated)setAdmin(d.admin);}).catch(()=>{}).finally(()=>setLoading(false)); },[]);
-  async function login(e:React.FormEvent) {
+  async function login(e:FormEvent) {
     e.preventDefault(); setError(""); setLoading(true);
     try {
       const r=await fetch("/api/admin/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
@@ -65,7 +64,6 @@ function AdminPage() {
     finally { setLoading(false); }
   }
   async function logout(){ await fetch("/api/admin/logout",{method:"POST",credentials:"same-origin"}); setAdmin(null); setSection("Overview"); }
-  useEffect(()=>{ if(admin) fetch("/api/admin/overview",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>setDataReady(Boolean(d?.dataConnected))).catch(()=>{}); },[admin]);
   if(loading) return <div className="admin-loading">AnimePay · Checking admin session…</div>;
   if(!admin) return <div className="admin-login-shell"><div className="admin-login-card"><a className="admin-brand" href="/"><span>A</span> AnimePay <small>ADMIN</small></a><div className="admin-lock">⌑</div><h1>Admin sign in</h1><p>Sign in to manage the AnimePay platform.</p><form onSubmit={login}><label htmlFor="admin-email">Email address</label><input id="admin-email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required/><label htmlFor="admin-password">Password</label><input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/><button className="admin-login-button" disabled={loading}>{loading?"Signing in…":"Sign in securely"}</button>{error&&<div className="admin-error">{error}</div>}</form><small className="admin-login-foot">Restricted administrator access · No public registration</small></div></div>;
   const items=["Overview","Payments","Merchants","Withdrawals","Provider","Audit log","Settings"];
