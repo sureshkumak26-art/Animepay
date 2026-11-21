@@ -139,6 +139,98 @@ app.get("/api/admin/overview", requireAdmin, async (_req, res) => {
   }
 });
 
+
+const merchantRoles = ["owner", "admin", "developer", "viewer"] as const;
+app.get("/api/admin/merchants", requireAdmin, async (_req, res) => {
+  try {
+    const merchants: any[] = await db("animepay_merchants?select=*&order=created_at.desc");
+    const memberships: any[] = await db("animepay_merchant_memberships?select=id,merchant_id,email,role,status,created_at&order=created_at.asc");
+    const rows = merchants.map(merchant => ({ ...merchant, members: memberships.filter(member => member.merchant_id === merchant.id) }));
+    return res.json({ merchants: rows });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : "Merchant database is unavailable." });
+  }
+});
+app.post("/api/admin/merchants", requireSameOrigin, requireAdmin, async (req, res) => {
+  const name = String(req.body?.name || "").trim().slice(0, 100);
+  const contactEmail = String(req.body?.contact_email || "").trim().toLowerCase().slice(0, 254);
+  if (name.length < 2) return res.status(400).json({ error: "Merchant name must contain at least 2 characters." });
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return res.status(400).json({ error: "Enter a valid contact email." });
+  const slug = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) + "-" + randomUUID().slice(0, 8);
+  try {
+    const created: any[] = await db("animepay_merchants", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ name, slug, contact_email: contactEmail || null, status: "active" }) });
+    const merchant = created[0];
+    if (contactEmail) {
+      await db("animepay_merchant_memberships", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ merchant_id: merchant.id, email: contactEmail, role: "owner", status: "invited" }) });
+    }
+    return res.status(201).json({ merchant: { ...merchant, members: contactEmail ? [{ email: contactEmail, role: "owner", status: "invited" }] : [] } });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : "Could not create merchant." });
+  }
+});
+app.patch("/api/admin/merchants/:id", requireSameOrigin, requireAdmin, async (req, res) => {
+  const id = String(req.params.id || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: "Invalid merchant ID." });
+  const patch: any = {};
+  if (req.body?.name !== undefined) {
+    const name = String(req.body.name).trim().slice(0, 100);
+    if (name.length < 2) return res.status(400).json({ error: "Merchant name must contain at least 2 characters." });
+    patch.name = name;
+  }
+  if (req.body?.contact_email !== undefined) {
+    const email = String(req.body.contact_email || "").trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid contact email." });
+    patch.contact_email = email || null;
+  }
+  if (req.body?.status !== undefined) {
+    if (!["active", "suspended"].includes(String(req.body.status))) return res.status(400).json({ error: "Status must be active or suspended." });
+    patch.status = String(req.body.status);
+  }
+  if (!Object.keys(patch).length) return res.status(400).json({ error: "No valid merchant changes supplied." });
+  patch.updated_at = new Date().toISOString();
+  try {
+    const rows: any[] = await db("animepay_merchants?id=eq." + encodeURIComponent(id), { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
+    if (!rows.length) return res.status(404).json({ error: "Merchant not found." });
+    return res.json({ merchant: rows[0] });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : "Could not update merchant." });
+  }
+});
+app.post("/api/admin/merchants/:id/members", requireSameOrigin, requireAdmin, async (req, res) => {
+  const merchantId = String(req.params.id || "");
+  const email = String(req.body?.email || "").trim().toLowerCase().slice(0, 254);
+  const role = String(req.body?.role || "");
+  if (!/^[0-9a-f-]{36}$/i.test(merchantId)) return res.status(400).json({ error: "Invalid merchant ID." });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid member email." });
+  if (!(merchantRoles as readonly string[]).includes(role)) return res.status(400).json({ error: "Choose owner, admin, developer, or viewer." });
+  try {
+    const rows: any[] = await db("animepay_merchant_memberships?on_conflict=merchant_id,email", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify({ merchant_id: merchantId, email, role, status: "invited" }) });
+    return res.status(201).json({ member: rows[0] });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : "Could not save merchant member." });
+  }
+});
+app.patch("/api/admin/merchant-members/:id", requireSameOrigin, requireAdmin, async (req, res) => {
+  const id = String(req.params.id || "");
+  const patch: any = {};
+  if (req.body?.role !== undefined) {
+    if (!(merchantRoles as readonly string[]).includes(String(req.body.role))) return res.status(400).json({ error: "Invalid member role." });
+    patch.role = String(req.body.role);
+  }
+  if (req.body?.status !== undefined) {
+    if (!["invited", "active", "suspended"].includes(String(req.body.status))) return res.status(400).json({ error: "Invalid member status." });
+    patch.status = String(req.body.status);
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !Object.keys(patch).length) return res.status(400).json({ error: "Invalid member update." });
+  try {
+    const rows: any[] = await db("animepay_merchant_memberships?id=eq." + encodeURIComponent(id), { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
+    if (!rows.length) return res.status(404).json({ error: "Member not found." });
+    return res.json({ member: rows[0] });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : "Could not update member." });
+  }
+});
+
 app.post("/api/checkout", async (req, res) => {
   const apiKey = process.env.NOWPAYMENTS_API_KEY || "";
   if (!apiKey || !process.env.NOWPAYMENTS_IPN_SECRET) return res.status(503).json({ error: "NOWPayments credentials are not configured yet." });
