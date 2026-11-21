@@ -27,6 +27,10 @@ Open http://localhost:5173. The API runs on http://localhost:4000.
 
 See `.env.example`. Never put provider secrets in frontend variables (for example, never use a `VITE_*` prefix for secrets). Keep API keys and IPN secrets server-side.
 
+## Customer checkout preview
+
+Open `/checkout/demo?amount=25.00&currency=USD&invoice=AP-DEMO-001` to preview the public checkout page. It includes a cryptocurrency/network selector and a placeholder for the provider-generated QR code. The five listed assets are demo options, not a promise of live availability. The checkout POST endpoint intentionally returns HTTP 501 until the provider integration is completed.
+
 ## API scaffold
 
 - `GET /api/health`
