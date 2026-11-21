@@ -197,7 +197,7 @@ app.post("/api/merchant/signup", requireSameOrigin, merchantAuthLimiter, async (
   const password = String(req.body?.password || "");
   const fullName = String(req.body?.full_name || "").trim().slice(0, 100);
   const company = String(req.body?.company || "").trim().slice(0, 100);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
+  if (!/^[^ @]+@[^ @]+[.][^ @]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
   if (password.length < 10) return res.status(400).json({ error: "Use a password with at least 10 characters." });
   if (fullName.length < 2) return res.status(400).json({ error: "Enter your full name." });
   try {
