@@ -232,7 +232,7 @@ app.post("/api/merchant/login", requireSameOrigin, merchantAuthLimiter, async (r
 });
 app.post("/api/merchant/forgot-password", requireSameOrigin, merchantAuthLimiter, async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
+  if (!/^[^ @]+@[^ @]+[.][^ @]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
   try {
     const redirect = encodeURIComponent("https://animepay.vercel.app/reset-password");
     await authRequest("recover?redirect_to=" + redirect, { email });
