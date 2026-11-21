@@ -18,7 +18,7 @@ export default function Landing() {
       <button className="landing-menu-toggle" onClick={() => setMenu(!menu)} aria-label="Toggle navigation">{menu ? <X/> : <Menu/>}</button>
       <nav className={menu ? "landing-links show" : "landing-links"}>
         <a href="#features" onClick={() => setMenu(false)}>Features</a><a href="#how-it-works" onClick={() => setMenu(false)}>How it works</a><a href="#security" onClick={() => setMenu(false)}>Security</a>
-        <a className="landing-login" href="/dashboard">Merchant dashboard <ArrowUpRight size={15}/></a>
+        <a href="/login">Sign in</a><a className="landing-login" href="/signup">Create account <ArrowUpRight size={15}/></a>
       </nav>
     </header>
     <main>
@@ -27,7 +27,7 @@ export default function Landing() {
           <div className="landing-pill"><span/> CRYPTO PAYMENTS, MADE CLEAR</div>
           <h1>Move money<br/><em>at the speed</em> of the internet.</h1>
           <p className="landing-lead">A modern crypto payment experience for businesses building what's next. Simple checkout for customers. Clear payment operations for merchants.</p>
-          <div className="landing-actions"><a className="landing-primary" href="/dashboard">Open merchant dashboard <ArrowRight size={17}/></a><a className="landing-secondary" href="#how-it-works">Explore how it works <span>↓</span></a></div>
+          <div className="landing-actions"><a className="landing-primary" href="/signup">Create merchant account <ArrowRight size={17}/></a><a className="landing-secondary" href="#how-it-works">Explore how it works <span>↓</span></a></div>
           <div className="landing-proof"><div className="proof-avatars"><i>A</i><i>₿</i><i>Ξ</i></div><span>Designed for modern digital businesses</span></div>
         </div>
         <div className="landing-visual" aria-label="Illustration of a crypto payment dashboard">
@@ -46,7 +46,7 @@ export default function Landing() {
       <section className="landing-section" id="features"><div className="landing-section-head"><div className="landing-eyebrow">WHY ANIMEPAY</div><h2>Payments should feel<br/><em>effortless.</em></h2><p>Bring the essential parts of a crypto payment journey into one focused experience.</p></div><div className="landing-feature-grid">{features.map(({icon:Icon,title,text},i)=><article className="landing-feature" key={title}><div className="feature-icon"><Icon size={20}/><small>0{i+1}</small></div><h3>{title}</h3><p>{text}</p></article>)}</div></section>
       <section className="landing-how" id="how-it-works"><div className="how-copy"><div className="landing-eyebrow">A CLEARER FLOW</div><h2>From checkout<br/>to <em>confirmation.</em></h2><p>Keep the customer journey straightforward and let your backend handle the important verification work.</p><a href="/dashboard">Explore the dashboard <ArrowRight size={16}/></a></div><div className="how-steps"><div><span>01</span><section><b>Create an invoice</b><p>Your app starts a payment request with the amount and order reference.</p></section></div><div><span>02</span><section><b>Customer chooses crypto</b><p>Show the available currency and network options for that invoice.</p></section></div><div><span>03</span><section><b>Verify before fulfilment</b><p>Confirm the provider's signed update and payment status on your server.</p></section></div></div></section>
       <section className="landing-security" id="security"><div className="security-icon"><ShieldCheck size={26}/></div><div><div className="landing-eyebrow">SECURITY IS NOT AN AFTERTHOUGHT</div><h2>Trust every status.<br/><em>Verify every payment.</em></h2><p>Never rely on a browser redirect alone. Keep provider secrets server-side, verify webhook signatures, and reconcile payment events before fulfilling orders.</p></div><div className="security-note"><ShieldCheck size={17}/><span><b>Server-side verification</b><small>Payment status should be confirmed by your backend.</small></span></div></section>
-      <section className="landing-cta"><div className="landing-eyebrow">READY WHEN YOU ARE</div><h2>Make your next payment<br/>experience <em>feel simpler.</em></h2><p>Explore the AnimePay merchant workspace.</p><a className="landing-primary" href="/dashboard">Go to merchant dashboard <ArrowRight size={17}/></a></section>
+      <section className="landing-cta"><div className="landing-eyebrow">READY WHEN YOU ARE</div><h2>Make your next payment<br/>experience <em>feel simpler.</em></h2><p>Create your merchant account and access your workspace.</p><a className="landing-primary" href="/signup">Get started <ArrowRight size={17}/></a></section>
     </main>
     <footer className="landing-footer"><a className="landing-logo" href="/"><span>A</span> animepay</a><span>Crypto payment infrastructure for digital businesses.</span><small>© {new Date().getFullYear()} AnimePay. Availability depends on provider and account configuration.</small></footer>
   </div>;
