@@ -1,5 +1,6 @@
 import { ArrowRight, ArrowUpRight, ShieldCheck, Zap, Globe2, Code2, Wallet, CheckCircle2, Menu, X } from "lucide-react";
 import { useState } from "react";
+import "./landing.css";
 
 const features = [
   { icon: Zap, title: "Fast crypto checkout", text: "Give customers a simple flow to choose a supported asset and complete a payment." },
