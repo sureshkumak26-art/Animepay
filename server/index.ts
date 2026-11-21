@@ -201,7 +201,7 @@ app.post("/api/merchant/signup", requireSameOrigin, merchantAuthLimiter, async (
   if (password.length < 10) return res.status(400).json({ error: "Use a password with at least 10 characters." });
   if (fullName.length < 2) return res.status(400).json({ error: "Enter your full name." });
   try {
-    const redirect = encodeURIComponent((req.get("origin") || "https://animepay.vercel.app") + "/login");
+    const redirect = encodeURIComponent((req.get("origin") || "https://animepay.vercel.app") + "/login?verified=1");
     const data = await authRequest("signup?redirect_to=" + redirect, { email, password, data: { full_name: fullName, company } });
     if (!data.access_token || !data.refresh_token) return res.status(201).json({ ok: true, confirmationRequired: true, message: "Check your email and confirm your address. Then sign in to open your merchant workspace." });
     const session = { access_token: data.access_token, refresh_token: data.refresh_token, expires_at: data.expires_at };
