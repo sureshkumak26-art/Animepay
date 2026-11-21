@@ -1,4 +1,5 @@
 import express from "express";
+import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const app = express();
@@ -33,5 +34,8 @@ export function verifyHmacSha512(rawBody: string, signature: string, secret: str
   const b = Buffer.from(signature, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+app.use(express.static(path.resolve("dist")));
+app.get("*", (_req, res) => res.sendFile(path.resolve("dist/index.html")));
 
 app.listen(port, "0.0.0.0", () => console.log(`AnimePay API listening on ${port} (demo mode)`));
