@@ -52,3 +52,46 @@
 .checkout-shell{background-size:140% 140%;animation:ap-page-in .45s ease-out both}
 .admin-sidebar,.sidebar{animation:ap-page-in .45s ease-out both}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ULTRA visual effects — neon, holographic glass, particles, depth and responsive motion */
+:root{--ap-violet:#a18aff;--ap-cyan:#62e6dc;--ap-pink:#d18cff;--ap-glow:0 0 22px #9278f566,0 0 55px #5f4bb52b}
+@keyframes ap-neon-breathe{0%,100%{box-shadow:0 0 0 #9278f500,0 0 18px #9278f522}50%{box-shadow:0 0 18px #9278f544,0 0 42px #6b55d833}}
+@keyframes ap-border-flow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes ap-particle-drift{0%{transform:translate3d(0,0,0)}50%{transform:translate3d(16px,-22px,0)}100%{transform:translate3d(-8px,-44px,0)}}
+@keyframes ap-scan{0%{background-position:0 -100vh}100%{background-position:0 100vh}}
+@keyframes ap-holo{0%,100%{filter:hue-rotate(0deg) brightness(1)}50%{filter:hue-rotate(18deg) brightness(1.08)}}
+@keyframes ap-card-enter{from{opacity:0;transform:perspective(900px) rotateX(5deg) translateY(20px)}to{opacity:1;transform:perspective(900px) rotateX(0) translateY(0)}}
+.app-shell,.checkout-shell,.admin-shell,.admin-login-shell,.auth-page{position:relative;isolation:isolate;overflow:hidden}
+.app-shell::before,.checkout-shell::before,.admin-shell::before,.admin-login-shell::before,.auth-page::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 12% 18%,#8d70ff20 0 1px,transparent 2px),radial-gradient(circle at 82% 27%,#61e7dc18 0 1px,transparent 2px),radial-gradient(circle at 68% 82%,#c18aff1c 0 1px,transparent 2px),radial-gradient(ellipse at 10% 5%,#7855e51c,transparent 36%),radial-gradient(ellipse at 90% 95%,#277c8a12,transparent 34%);background-size:170px 170px,230px 230px,190px 190px,auto,auto;animation:ap-particle-drift 22s ease-in-out infinite alternate}
+.app-shell::after,.checkout-shell::after,.admin-shell::after,.admin-login-shell::after,.auth-page::after{content:"";position:fixed;inset:0;z-index:8;pointer-events:none;opacity:.12;background:linear-gradient(transparent 50%,#b7a5ff0a 50%);background-size:100% 5px;mask-image:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent)}
+.app-shell .main,.app-shell .sidebar,.checkout-shell>* ,.admin-shell>* ,.admin-login-shell>* ,.auth-page>*{position:relative;z-index:1}
+.brand-mark,.checkout-brand>span,.admin-brand>span,.auth-brand>span{box-shadow:0 0 16px #947cff70,0 0 36px #765ce044;animation:ap-neon-breathe 3s ease-in-out infinite}
+.stat-card,.panel,.asset-card,.checkout-card,.checkout-side>div,.admin-stat,.admin-panel,.admin-login-card,.merchant-card,.merchant-create,.auth-card{position:relative;overflow:hidden;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.stat-card::before,.panel::before,.asset-card::before,.checkout-card::before,.checkout-side>div::before,.admin-stat::before,.admin-panel::before,.admin-login-card::before,.merchant-card::before,.merchant-create::before,.auth-card::before{content:"";position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,#a995ff99,#62e6dc88,transparent);background-size:200% 100%;animation:ap-border-flow 5s linear infinite;pointer-events:none}
+.stat-card::after,.asset-card::after{content:"";position:absolute;width:120px;height:120px;right:-70px;top:-75px;border-radius:50%;background:#9a7bff1a;filter:blur(15px);pointer-events:none}
+.stat-card,.asset-card,.merchant-card{transform-style:preserve-3d}
+.banner{box-shadow:inset 0 1px #ffffff0c,0 10px 35px #6b55d51a;animation:ap-neon-breathe 5s ease-in-out infinite}
+.nav-item.active{box-shadow:inset 2px 0 #a18aff,0 0 22px #9278f522}
+.primary,.checkout-submit,.auth-submit,.admin-login-button{box-shadow:0 7px 24px #8064ee45,inset 0 1px #ffffff44}
+input:focus,textarea:focus,select:focus,.auth-card input:focus{box-shadow:0 0 0 3px #9278f526,0 0 22px #9278f52b!important}
+tbody tr{transition:background .2s ease,transform .2s ease}
+tbody tr:hover{background:#a18aff0b}
+.status.confirmed{box-shadow:0 0 14px #6ed6b522}
+.environment span{box-shadow:0 0 10px #a58aff;animation:ap-neon-breathe 2s infinite}
+.checkout-intro h1,.admin-top h1,.auth-card h1{background:linear-gradient(100deg,#fff 15%,#c4b5ff 48%,#72e8df 78%,#fff);background-size:220% auto;background-clip:text;-webkit-background-clip:text;color:transparent;animation:ap-border-flow 9s linear infinite}
+.qr-icon{box-shadow:0 0 25px #9278f533,inset 0 0 25px #9278f51c;animation:ap-neon-breathe 3s infinite}
+.admin-welcome{box-shadow:0 12px 35px #0003,inset 0 1px #ffffff12}
+@media(hover:hover) and (pointer:fine){
+ .stat-card:hover,.asset-card:hover,.merchant-card:hover{transform:perspective(900px) rotateX(2deg) translateY(-6px) scale(1.012);box-shadow:0 18px 42px #0005,0 0 26px #9278f52b}
+ .panel:hover,.checkout-card:hover,.admin-panel:hover{box-shadow:0 14px 38px #0004,0 0 25px #9278f51a}
+ .primary:hover,.checkout-submit:hover,.auth-submit:hover,.admin-login-button:hover{box-shadow:0 0 0 1px #c8baff88,0 0 28px #9278f577}
+}
+@media(max-width:700px){
+ .app-shell::before,.checkout-shell::before,.admin-shell::before,.admin-login-shell::before,.auth-page::before{background-size:240px 240px,310px 310px,270px 270px,auto,auto;animation-duration:34s;opacity:.65}
+ .app-shell::after,.checkout-shell::after,.admin-shell::after,.admin-login-shell::after,.auth-page::after{opacity:.06;background-size:100% 7px}
+ .stat-card,.panel,.asset-card,.checkout-card,.checkout-side>div,.admin-stat,.admin-panel,.admin-login-card,.merchant-card,.merchant-create,.auth-card{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+ .stat-card:hover,.asset-card:hover,.merchant-card:hover{transform:none}
+ .nav-item:hover,.quick-row:hover,.asset-option:hover,.select-btn:hover{transform:none}
+ .primary:active,.checkout-submit:active,.auth-submit:active,.admin-login-button:active,.asset-option:active{transform:scale(.975)}
+}
+@media(prefers-reduced-motion:reduce){.app-shell::before,.checkout-shell::before,.admin-shell::before,.admin-login-shell::before,.auth-page::before,.app-shell::after,.checkout-shell::after,.admin-shell::after,.admin-login-shell::after,.auth-page::after{animation:none!important} }
