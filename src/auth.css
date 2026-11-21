@@ -18,3 +18,11 @@
 .auth-card form>*:nth-child(3){animation-delay:.08s}
 @keyframes ap-auth-field-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.auth-page *, .auth-page *::before,.auth-page *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Ultra neon and holographic authentication finish */
+.auth-page{background:radial-gradient(ellipse at 50% -15%,#30245b 0%,#0a0c17 48%,#070811 100%)}
+.auth-card{box-shadow:0 25px 90px #000b,0 0 35px #9278f526,inset 0 1px #ffffff12}
+.auth-icon{box-shadow:0 0 24px #9278f544;animation:ap-neon-breathe 3s ease-in-out infinite}
+.auth-submit{background:linear-gradient(110deg,#a18aff,#765ce0 55%,#55cfc9);background-size:200% 100%;animation:ap-border-flow 6s linear infinite}
+.auth-security svg{filter:drop-shadow(0 0 5px #8e7ce0)}
+@media(max-width:600px){.auth-glow-a,.auth-glow-b{filter:blur(70px);opacity:.15}}
