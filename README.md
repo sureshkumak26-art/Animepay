@@ -1,17 +1,27 @@
 # AnimePay
 
-AnimePay is a merchant-facing cryptocurrency payment gateway dashboard starter.
+AnimePay is a merchant-facing crypto payment workspace with a public landing page, email/password account access, merchant-scoped payment records, a NOWPayments checkout adapter, and a separate administrator console.
 
-## Current status
+## Current capabilities
 
-This repository contains a **demo client panel and API scaffold**. It is not a live custodial wallet or production payment processor. Demo data is local to the browser; payment, balance, and withdrawal actions do not move funds.
+- Public landing page with merchant sign-up and sign-in.
+- Supabase Auth email/password registration and login.
+- HttpOnly merchant session cookie; merchant dashboard routes require an authenticated account.
+- Merchant workspace is created on first successful account sign-in, or an invited membership is activated.
+- Merchant payment records are scoped by merchant ID.
+- Authenticated merchant invoice builder for configured NOWPayments assets.
+- Server-side NOWPayments IPN signature and provider-status verification.
+- Separate administrator console at /admin.
+- Crypto withdrawals remain **disabled**. Deposits/payment invoices do not imply payout capability.
 
-Before accepting real funds, integrate an approved provider account (for example, NOWPayments), verify signed IPN/webhook callbacks, persist an immutable double-entry ledger in PostgreSQL, implement authentication and role-based access, add idempotency/reconciliation, withdrawal risk checks and 2FA, and obtain jurisdiction-specific legal/compliance advice.
+The dashboard no longer uses a sample merchant identity or fabricated payment totals. Payment volume is based on stored provider payment records. Some dashboard modules (merchant API key issuance, merchant webhook delivery/retries, advanced analytics and support ticketing) are not yet implemented.
 
 ## Requirements
 
 - Node.js 20+
 - npm
+- Supabase project with Email/Password authentication enabled
+- NOWPayments account and credentials for live invoice creation
 
 ## Run locally
 
@@ -25,42 +35,53 @@ Open http://localhost:5173. The API runs on http://localhost:4000.
 
 ## Environment
 
-See `.env.example`. Never put provider secrets in frontend variables (for example, never use a `VITE_*` prefix for secrets). Keep API keys and IPN secrets server-side.
+See .env.example.
 
-## Customer checkout preview
+Required server-side Supabase settings:
+- SUPABASE_URL
+- SUPABASE_PUBLISHABLE_KEY (or SUPABASE_ANON_KEY) for Supabase Auth endpoints
+- SUPABASE_SERVICE_ROLE_KEY for privileged server-side database access only
 
-Open `/checkout/demo?amount=25.00&currency=USD&invoice=AP-DEMO-001` to preview the public checkout page. It includes a cryptocurrency/network selector and a placeholder for the provider-generated QR code. The five listed assets are demo options, not a promise of live availability. The checkout POST endpoint intentionally returns HTTP 501 until the provider integration is completed.
+Other settings:
+- SESSION_SECRET: random value of at least 32 characters for administrator sessions.
+- ADMIN_EMAIL and ADMIN_PASSWORD_HASH: administrator login.
+- NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET: server-side provider credentials.
+- NODE_ENV=production in production.
 
-## API scaffold
+Never expose the Supabase service-role key or NOWPayments secrets in browser code or VITE_* variables.
 
-- `GET /api/health`
-- `GET /api/currencies` — demo currency list
-- `GET /api/merchant/summary` — demo summary
-- `POST /api/checkout` — disabled until a provider is configured
-- `POST /api/withdrawals` — disabled until custody, authentication, and compliance controls are implemented
+## Merchant pages
+
+- / — public AnimePay landing page
+- /signup — create a merchant account
+- /login — sign in to a merchant account
+- /dashboard — authenticated merchant workspace
+- /checkout — authenticated merchant invoice builder
+- /admin — restricted administrator console
+
+If Supabase email confirmation is enabled, set the Supabase Auth Site URL to https://animepay.vercel.app and allow the redirect URL https://animepay.vercel.app/login?verified=1 in Authentication → URL Configuration.
+
+## API routes
+
+- GET /api/health
+- POST /api/merchant/signup
+- POST /api/merchant/login
+- GET /api/merchant/me
+- POST /api/merchant/logout
+- GET /api/merchant/summary — authenticated, merchant-scoped records
+- POST /api/checkout — authenticated merchant invoice creation
+- POST /api/nowpayments/ipn — signed provider callback verification
+- POST /api/withdrawals — intentionally disabled (HTTP 501)
 
 ## Deployment
 
-Deploy the frontend and API as one Node service, or configure a reverse proxy so `/api` routes to the Express server. Set `NODE_ENV=production` and a strong server-side `SESSION_SECRET` before adding authentication.
+Deploy the repository root as a Vercel project. Set all required server-side environment variables for Production. After changing environment variables, trigger a new deployment.
 
-## Security notice
+## Security notes
 
-Do not use demo balances, sample payment statuses, or this scaffold to represent real funds. No private keys, deposit address derivation, blockchain confirmation monitoring, or actual payouts are implemented.
-
-## Admin panel (Vercel)
-
-The separate administrator console is available at `/admin`. It uses a server-verified admin role, an HttpOnly/Secure/SameSite cookie, an 8-hour signed session, same-origin checks, and a login rate limit. There is no public admin registration. The merchant dashboard remains separate.
-
-Set these **server-side** Vercel Environment Variables for Production:
-- `ADMIN_EMAIL`: the administrator email address.
-- `ADMIN_PASSWORD_HASH`: bcrypt hash of the administrator password (cost factor 12 or higher).
-- `SESSION_SECRET`: a cryptographically random value of at least 32 characters.
-- `NODE_ENV=production`.
-
-Generate a bcrypt hash locally after installing dependencies:
-```bash
-node --input-type=module -e "import bcrypt from 'bcryptjs'; console.log(await bcrypt.hash('REPLACE_WITH_A_LONG_UNIQUE_PASSWORD', 12))"
-```
-Copy only the generated hash into `ADMIN_PASSWORD_HASH`; do not commit it or paste it into chat. Use a password manager and rotate it if exposed.
-
-Vercel serverless entrypoint: `api/[...path].ts`. Deploy the project with the repository root as the Vercel project root. This adds admin authentication only: payment records, merchants, withdrawals, provider management and audit events remain locked until a persistent database, verified payment webhooks and compliance controls are implemented. Do not treat empty admin metrics as live financial data.
+- Merchant and admin cookies are HttpOnly and Secure in production.
+- Merchant login and sign-up are rate-limited.
+- Merchant access is checked against Supabase Auth and active merchant membership on the server.
+- Payment queries are filtered by merchant ID.
+- Supabase public tables use RLS; service-role access is kept on the server.
+- Withdrawals must not be enabled until payout execution, balance locking, anti-double-spend protections, compliance checks, and admin approval are implemented and tested.
