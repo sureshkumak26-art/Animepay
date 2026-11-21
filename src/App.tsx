@@ -31,10 +31,6 @@ function MerchantGate({children}:{children:ReactNode}) {
   return checking ? <div className="admin-loading">AnimePay · Verifying your merchant account…</div> : <>{children}</>;
 }
 function DashboardApp() {
-function App() {
-  if (window.location.pathname.startsWith("/admin")) return <AdminPage />;
-  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
-  if (window.location.pathname !== "/dashboard") return <Landing />;
   const [page,setPage] = useState("Overview");
   const [summary,setSummary] = useState<Summary>(emptySummary);
   const [merchant,setMerchant] = useState<{name:string;slug:string;email:string}|null>(null);
@@ -52,7 +48,7 @@ function App() {
       <div className="brand"><div className="brand-mark">A</div><div><b>AnimePay</b><small>PAYMENT GATEWAY</small></div><button className="mobile-close" onClick={()=>setMenu(false)}><X size={18}/></button></div>
       <div className="workspace"><span className="avatar">MP</span><div><b>{merchant?.name || "Merchant workspace"}</b><small>Merchant workspace</small></div></div>
       <div className="nav-caption">WORKSPACE</div>
-      <nav>{nav.map(n=><button key={n.label} className={page===n.label?"nav-item active":"nav-item"} onClick={()=>{setPage(n.label);setMenu(false);setNotice("");}}><n.icon size={17}/><span>{n.label}</span>{n.label==="Payments"&&<i>12</i>}</button>)}</nav>
+      <nav>{nav.map(n=><button key={n.label} className={page===n.label?"nav-item active":"nav-item"} onClick={()=>{setPage(n.label);setMenu(false);setNotice("");}}><n.icon size={17}/><span>{n.label}</span></button>)}</nav>
       <div className="sidebar-bottom"><div className="secure"><ShieldCheck size={18}/><div><b>Protected workspace</b><small>Authenticated account</small></div></div><div className="user"><div className="avatar user-avatar">MP</div><div><b>{merchant?.name || "Merchant"}</b><small>{merchant?.email || ""}</small></div></div><button className="merchant-logout" onClick={logout}>Sign out ↗</button></div>
     </aside>
     <main className="main">
