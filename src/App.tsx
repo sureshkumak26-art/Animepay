@@ -59,7 +59,7 @@ function AdminPage() {
     e.preventDefault(); setError(""); setLoading(true);
     try {
       const r=await fetch("/api/admin/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
-      const d=await r.json(); if(!r.ok) throw new Error(d.error||"Login failed");
+      const raw=await r.text(); let d:{error?:string;admin?:{email:string;role:string}}; try { d=JSON.parse(raw); } catch { throw new Error("Vercel API returned a non-JSON page. Please wait for the latest deployment and try again."); } if(!r.ok) throw new Error(d.error||"Login failed");
       setAdmin(d.admin); setPassword("");
     } catch(err) { setError(err instanceof Error?err.message:"Unable to sign in."); }
     finally { setLoading(false); }
