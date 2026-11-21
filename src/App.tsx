@@ -40,7 +40,7 @@ function DashboardApp() {
     fetch("/api/merchant/summary",{credentials:"same-origin"}).then(async r=>{if(r.status===401){window.location.replace("/login");return null;}if(!r.ok)throw new Error("Payment data is temporarily unavailable.");return r.json();}).then(d=>d&&setSummary(d)).catch(e=>setNotice(e.message));
     fetch("/api/merchant/me",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>d&&setMerchant({name:d.merchant.name,slug:d.merchant.slug,email:d.user.email})).catch(()=>{});
   },[]);
-  const action = (name:string) => setNotice(name === "Create payment" ? "Payment creation is not enabled in the merchant dashboard yet." : name === "Withdrawal request" ? "Crypto withdrawals are currently disabled." : name + " is not available yet.");
+  const action = (name:string) => { if(name==="Create payment"){window.location.assign("/checkout");return;} setNotice(name === "Withdrawal request" ? "Crypto withdrawals are currently disabled." : name + " is not available yet."); };
   async function logout(){ await fetch("/api/merchant/logout",{method:"POST",credentials:"same-origin"}); window.location.assign("/login"); }
   const title = page === "Overview" ? "Welcome, " + (merchant?.name || "Merchant") : page;
   return <div className="app-shell">
