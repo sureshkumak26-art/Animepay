@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Code2, CreditCard, Download, Eye, FileKey2, Globe2, LayoutDashboard, LifeBuoy, Menu, Plus, Search, Settings, ShieldCheck, Wallet, Webhook, X } from "lucide-react";
+import Landing from "./Landing";
 
 type Payment = { id: string; customer: string; asset: string; amount: string; status: string; date: string };
 type Summary = { mode: string; availableBalance: string; pendingBalance: string; totalPayments: number; successfulPayments: number; volumeUsd: string; recentPayments: Payment[] };
@@ -16,6 +17,7 @@ const fallback: Summary = { mode:"demo", availableBalance:"0.00", pendingBalance
 function App() {
   if (window.location.pathname.startsWith("/admin")) return <AdminPage />;
   if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
+  if (window.location.pathname !== "/dashboard") return <Landing />;
   const [page,setPage] = useState("Overview");
   const [summary,setSummary] = useState<Summary>(fallback);
   const [menu,setMenu] = useState(false);
