@@ -14,6 +14,7 @@ const fallback: Summary = { mode:"demo", availableBalance:"0.00", pendingBalance
   {id:"AP-2046",customer:"Customer C",asset:"BTC",amount:"0.0018",status:"confirmed",date:"Yesterday"}
 ]};
 function App() {
+  if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
   const [page,setPage] = useState("Overview");
   const [summary,setSummary] = useState<Summary>(fallback);
   const [menu,setMenu] = useState(false);
@@ -43,6 +44,59 @@ function App() {
     </main>
   </div>;
 }
+
+function CheckoutPage() {
+  const params = new URLSearchParams(window.location.search);
+  const amount = params.get("amount") || "25.00";
+  const currency = params.get("currency") || "USD";
+  const invoice = params.get("invoice") || "AP-DEMO-001";
+  const [asset,setAsset] = useState("usdttrc20");
+  const [network,setNetwork] = useState("TRON");
+  const [busy,setBusy] = useState(false);
+  const [message,setMessage] = useState("");
+  const assets = [
+    {id:"usdttrc20",name:"Tether USD",ticker:"USDT",network:"TRON",symbol:"₮"},
+    {id:"usdterc20",name:"Tether USD",ticker:"USDT",network:"Ethereum",symbol:"₮"},
+    {id:"btc",name:"Bitcoin",ticker:"BTC",network:"Bitcoin",symbol:"₿"},
+    {id:"eth",name:"Ethereum",ticker:"ETH",network:"Ethereum",symbol:"Ξ"},
+    {id:"usdc",name:"USD Coin",ticker:"USDC",network:"Ethereum",symbol:"＄"}
+  ];
+  const selected=assets.find(x=>x.id===asset)||assets[0];
+  async function createPayment(){
+    setBusy(true);setMessage("");
+    try {
+      const response=await fetch("/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({price_amount:Number(amount),price_currency:currency.toLowerCase(),pay_currency:asset,order_id:invoice})});
+      const data=await response.json();
+      setMessage(data.error||"Payment request could not be created.");
+    } catch { setMessage("Checkout API is unavailable. Please try again later."); }
+    finally { setBusy(false); }
+  }
+  return <div className="checkout-shell">
+    <header className="checkout-top"><a className="checkout-brand" href="/"><span>A</span> AnimePay</a><div><ShieldCheck size={15}/> Secure checkout preview</div></header>
+    <main className="checkout-main">
+      <div className="checkout-intro"><span className="checkout-kicker">PAYMENT REQUEST</span><h1>Complete your payment</h1><p>Choose a cryptocurrency and network to continue.</p></div>
+      <div className="checkout-layout">
+        <section className="checkout-card">
+          <div className="checkout-card-head"><div><span className="merchant-avatar">AC</span><div><b>Anime Cloud</b><small>Payment to merchant</small></div></div><span className="demo-pill">DEMO</span></div>
+          <div className="checkout-amount"><small>YOU ARE PAYING</small><strong>{currency.toUpperCase()} {amount}</strong><span>Invoice {invoice}</span></div>
+          <label className="checkout-label" htmlFor="pay-asset">Select payment currency</label>
+          <div className="asset-options">{assets.map(item=><button key={item.id} className={asset===item.id?"asset-option selected":"asset-option"} onClick={()=>{setAsset(item.id);setNetwork(item.network);}}><span>{item.symbol}</span><div><b>{item.ticker}</b><small>{item.name}</small></div><i>{item.network}</i></button>)}</div>
+          <div className="network-line"><span>Network</span><b>{network}</b></div>
+          <button className="checkout-submit" onClick={createPayment} disabled={busy}>{busy?"Creating…":"Continue to payment"} <ArrowUpRight size={17}/></button>
+          {message&&<div className="checkout-message">{message}</div>}
+          <p className="checkout-disclaimer">This is a checkout UI preview. Payment creation is disabled until a verified payment provider is connected.</p>
+        </section>
+        <aside className="checkout-side">
+          <div className="qr-placeholder"><div className="qr-icon">▦</div><b>Payment QR appears here</b><small>Generated securely after invoice creation</small></div>
+          <div className="checkout-secure"><ShieldCheck size={17}/><div><b>Protected payment flow</b><small>Always verify the address, network and amount before sending crypto.</small></div></div>
+          <div className="checkout-help"><CircleHelp size={16}/><span>Need help? Contact the merchant.</span></div>
+        </aside>
+      </div>
+      <footer className="checkout-footer">Powered by <b>AnimePay</b> <span>•</span> Never send funds to an address shown outside this checkout.</footer>
+    </main>
+  </div>;
+}
+
 function Stat({label,value,sub,icon:Icon}:{label:string;value:string;sub:string;icon:any}){return <div className="stat-card"><div className="stat-top"><span>{label}</span><i><Icon size={17}/></i></div><strong>{value}</strong><small>{sub}</small></div>}
 function Quick({icon:Icon,title,desc,onClick}:{icon:any;title:string;desc:string;onClick:()=>void}){return <button className="quick-row" onClick={onClick}><span><Icon size={17}/></span><div><b>{title}</b><small>{desc}</small></div><ArrowUpRight size={15}/></button>}
 function PaymentTable({rows}:{rows:Payment[]}){return <div className="table-wrap"><table><thead><tr><th>PAYMENT ID</th><th>CUSTOMER</th><th>ASSET</th><th>AMOUNT</th><th>STATUS</th><th>DATE</th></tr></thead><tbody>{rows.map(r=><tr key={r.id}><td className="id">{r.id}</td><td>{r.customer}</td><td>{r.asset}</td><td className="amount">{r.amount}</td><td><span className={"status "+r.status}>{r.status}</span></td><td className="muted">{r.date}</td></tr>)}</tbody></table></div>}
