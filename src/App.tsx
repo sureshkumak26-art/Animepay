@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2, ChevronDown, CircleHelp, Code2, CreditCard, Download, Eye, FileKey2, Globe2, LayoutDashboard, LifeBuoy, Menu, Plus, Search, Settings, ShieldCheck, Wallet, Webhook, X } from "lucide-react";
 import Landing from "./Landing";
+import MerchantAuth from "./MerchantAuth";
+import type { ReactNode } from "react";
 
 type Payment = { id: string; customer: string; asset: string; amount: string; status: string; date: string };
 type Summary = { mode: string; availableBalance: string; pendingBalance: string; totalPayments: number; successfulPayments: number; volumeUsd: string; recentPayments: Payment[] };
@@ -9,40 +11,60 @@ const nav = [
   { label: "Withdrawals", icon: ArrowUpRight }, { label: "API Keys", icon: FileKey2 }, { label: "Webhooks", icon: Webhook },
   { label: "Analytics", icon: BarChart3 }, { label: "API Docs", icon: BookOpen }, { label: "Settings", icon: Settings }, { label: "Support", icon: LifeBuoy }
 ];
-const fallback: Summary = { mode:"demo", availableBalance:"0.00", pendingBalance:"0.00", totalPayments:1284, successfulPayments:1198, volumeUsd:"24850.00", recentPayments:[
-  {id:"AP-2048",customer:"Customer A",asset:"USDT TRC20",amount:"125.00",status:"confirmed",date:"Today, 10:42"},
-  {id:"AP-2047",customer:"Customer B",asset:"ETH",amount:"0.042",status:"pending",date:"Today, 09:18"},
-  {id:"AP-2046",customer:"Customer C",asset:"BTC",amount:"0.0018",status:"confirmed",date:"Yesterday"}
-]};
+const emptySummary: Summary = { mode:"live", availableBalance:"0.00", pendingBalance:"0.00", totalPayments:0, successfulPayments:0, volumeUsd:"0.00", recentPayments:[] };
+function App() {
+  const path = window.location.pathname;
+  if (path.startsWith("/admin")) return <AdminPage />;
+  if (path.startsWith("/checkout")) return <CheckoutPage />;
+  if (path === "/login" || path === "/signup") return <MerchantAuth mode={path === "/signup" ? "signup" : "login"} />;
+  if (path !== "/dashboard") return <Landing />;
+  return <MerchantGate><DashboardApp /></MerchantGate>;
+}
+function MerchantGate({children}:{children:ReactNode}) {
+  const [checking,setChecking] = useState(true);
+  useEffect(() => {
+    fetch("/api/merchant/me",{credentials:"same-origin"}).then(r=>{
+      if(!r.ok) { window.location.replace("/login"); return; }
+      setChecking(false);
+    }).catch(()=>window.location.replace("/login"));
+  },[]);
+  return checking ? <div className="admin-loading">AnimePay · Verifying your merchant account…</div> : <>{children}</>;
+}
+function DashboardApp() {
 function App() {
   if (window.location.pathname.startsWith("/admin")) return <AdminPage />;
   if (window.location.pathname.startsWith("/checkout")) return <CheckoutPage />;
   if (window.location.pathname !== "/dashboard") return <Landing />;
   const [page,setPage] = useState("Overview");
-  const [summary,setSummary] = useState<Summary>(fallback);
+  const [summary,setSummary] = useState<Summary>(emptySummary);
+  const [merchant,setMerchant] = useState<{name:string;slug:string;email:string}|null>(null);
   const [menu,setMenu] = useState(false);
   const [notice,setNotice] = useState("");
-  useEffect(()=>{ fetch("/api/merchant/summary").then(r=>r.ok?r.json():null).then(d=>d&&setSummary(d)).catch(()=>{}); },[]);
-  const action = (name:string) => setNotice(name + " is a preview in this starter. Live financial actions are disabled.");
-  const title = page === "Overview" ? "Good morning, Merchant" : page;
+  useEffect(()=>{
+    fetch("/api/merchant/summary",{credentials:"same-origin"}).then(async r=>{if(r.status===401){window.location.replace("/login");return null;}if(!r.ok)throw new Error("Payment data is temporarily unavailable.");return r.json();}).then(d=>d&&setSummary(d)).catch(e=>setNotice(e.message));
+    fetch("/api/merchant/me",{credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(d=>d&&setMerchant({name:d.merchant.name,slug:d.merchant.slug,email:d.user.email})).catch(()=>{});
+  },[]);
+  const action = (name:string) => setNotice(name === "Create payment" ? "Payment creation is not enabled in the merchant dashboard yet." : name === "Withdrawal request" ? "Crypto withdrawals are currently disabled." : name + " is not available yet.");
+  async function logout(){ await fetch("/api/merchant/logout",{method:"POST",credentials:"same-origin"}); window.location.assign("/login"); }
+  const title = page === "Overview" ? "Welcome, " + (merchant?.name || "Merchant") : page;
   return <div className="app-shell">
     <aside className={menu?"sidebar open":"sidebar"}>
       <div className="brand"><div className="brand-mark">A</div><div><b>AnimePay</b><small>PAYMENT GATEWAY</small></div><button className="mobile-close" onClick={()=>setMenu(false)}><X size={18}/></button></div>
-      <div className="workspace"><span className="avatar">AC</span><div><b>Anime Cloud</b><small>Merchant workspace</small></div><ChevronDown size={15}/></div>
+      <div className="workspace"><span className="avatar">MP</span><div><b>{merchant?.name || "Merchant workspace"}</b><small>Merchant workspace</small></div></div>
       <div className="nav-caption">WORKSPACE</div>
       <nav>{nav.map(n=><button key={n.label} className={page===n.label?"nav-item active":"nav-item"} onClick={()=>{setPage(n.label);setMenu(false);setNotice("");}}><n.icon size={17}/><span>{n.label}</span>{n.label==="Payments"&&<i>12</i>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="secure"><ShieldCheck size={18}/><div><b>Protected workspace</b><small>Demo environment</small></div></div><div className="user"><div className="avatar user-avatar">DK</div><div><b>Demo Merchant</b><small>admin@animecloud.in</small></div><ChevronDown size={15}/></div></div>
+      <div className="sidebar-bottom"><div className="secure"><ShieldCheck size={18}/><div><b>Protected workspace</b><small>Authenticated account</small></div></div><div className="user"><div className="avatar user-avatar">MP</div><div><b>{merchant?.name || "Merchant"}</b><small>{merchant?.email || ""}</small></div></div><button className="merchant-logout" onClick={logout}>Sign out ↗</button></div>
     </aside>
     <main className="main">
-      <header className="topbar"><button className="mobile-menu" onClick={()=>setMenu(true)}><Menu/></button><div className="crumb">Workspace <span>/</span> <b>{page}</b></div><div className="top-actions"><span className="environment"><span/> DEMO MODE</span><button className="icon-btn" onClick={()=>action("Notifications")}><Bell size={18}/></button><div className="top-avatar">DK</div></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={()=>setMenu(true)}><Menu/></button><div className="crumb">Workspace <span>/</span> <b>{page}</b></div><div className="top-actions"><span className="environment"><span/> LIVE ACCOUNT</span><button className="icon-btn" onClick={()=>action("Notifications")}><Bell size={18}/></button><div className="top-avatar">MP</div></div></header>
       <div className="content"><div className="page-head"><div><div className="eyebrow">MERCHANT CONSOLE <span>•</span> {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</div><h1>{title}</h1><p>{page==="Overview"?"Here’s what’s happening with your payments today.":"Manage your AnimePay merchant account and payment operations."}</p></div><button className="primary" onClick={()=>action("Create payment")}><Plus size={17}/> Create payment</button></div>
       {notice&&<div className="notice"><ShieldCheck size={17}/>{notice}<button onClick={()=>setNotice("")}><X size={15}/></button></div>}
-      {page==="Overview"?<><div className="banner"><div className="banner-icon"><ShieldCheck size={22}/></div><div><b>You’re viewing a demo workspace</b><p>Sample activity is shown for preview. No cryptocurrency is being received, held, or transferred.</p></div><span>DEMO</span></div>
-      <section className="stats"><Stat label="Available balance" value="$0.00" sub="No real funds connected" icon={Wallet}/><Stat label="Pending balance" value="$0.00" sub="Awaiting confirmation" icon={Activity}/><Stat label="Total payment volume" value="$24,850.00" sub="Illustrative demo data" icon={ArrowDownLeft}/><Stat label="Successful payments" value="1,198" sub="Of 1,284 sample payments" icon={CheckCircle2}/></section>
-      <div className="two-col"><section className="panel chart-panel"><div className="panel-head"><div><h2>Payment activity</h2><p>Volume overview · demo data</p></div><button className="select-btn">Last 7 days <ChevronDown size={14}/></button></div><div className="chart"><div className="chart-y"><span>$5k</span><span>$3k</span><span>$1k</span><span>$0</span></div><div className="chart-main"><div className="grid-lines"><i/><i/><i/><i/></div><svg viewBox="0 0 600 180" preserveAspectRatio="none"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#8b72ff" stopOpacity=".28"/><stop offset="100%" stopColor="#8b72ff" stopOpacity="0"/></linearGradient></defs><path d="M0 142 C35 128 40 135 80 110 S140 124 170 88 S220 104 260 75 S310 92 350 62 S400 82 430 49 S490 78 520 36 S565 52 600 18 L600 180 L0 180Z" fill="url(#fill)"/><path d="M0 142 C35 128 40 135 80 110 S140 124 170 88 S220 104 260 75 S310 92 350 62 S400 82 430 49 S490 78 520 36 S565 52 600 18" fill="none" stroke="#9a86ff" strokeWidth="3" vectorEffect="non-scaling-stroke"/></svg><div className="chart-x"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div></div></section>
-      <section className="panel quick-panel"><div className="panel-head"><div><h2>Quick actions</h2><p>Common merchant tasks</p></div></div><Quick icon={Plus} title="Create payment" desc="Generate a checkout invoice" onClick={()=>action("Create payment")}/><Quick icon={ArrowUpRight} title="Request withdrawal" desc="Preview a payout request" onClick={()=>setPage("Withdrawals")}/><Quick icon={Code2} title="View API docs" desc="Explore integration endpoints" onClick={()=>setPage("API Docs")}/><Quick icon={Webhook} title="Configure webhook" desc="Set event notification URL" onClick={()=>setPage("Webhooks")}/></section></div>
-      <section className="panel table-panel"><div className="panel-head"><div><h2>Recent payments</h2><p>Your latest payment activity</p></div><button className="text-btn" onClick={()=>setPage("Payments")}>View all <ArrowUpRight size={14}/></button></div><PaymentTable rows={summary.recentPayments}/></section></>:<GenericPage page={page} onAction={action}/>}
-      <footer>© 2026 AnimePay <span>•</span> Secure crypto payments, simplified <span className="footer-right"><ShieldCheck size={13}/> Demo build · Not for live funds</span></footer>
+      {page==="Overview"?<>
+      <section className="stats"><Stat label="Successful payment volume" value={"$"+summary.volumeUsd} sub="Verified completed payments" icon={Wallet}/><Stat label="Pending payment volume" value={"$"+summary.pendingBalance} sub="Payments awaiting confirmation" icon={Activity}/><Stat label="Payment records" value={String(summary.totalPayments)} sub="Most recent 100 records" icon={ArrowDownLeft}/><Stat label="Successful payments" value={String(summary.successfulPayments)} sub="Provider-verified completions" icon={CheckCircle2}/></section>
+      <div className="two-col"><section className="panel chart-panel"><div className="panel-head"><div><h2>Payment activity</h2><p>Verified activity from your merchant account</p></div></div>{summary.recentPayments.length===0?<div className="chart-empty">No payment activity yet. Your verified payments will appear here.</div>:<PaymentTable rows={summary.recentPayments.slice(0,5)}/>}</section>
+      <section className="panel quick-panel"><div className="panel-head"><div><h2>Quick actions</h2><p>Merchant tools</p></div></div><Quick icon={Plus} title="Create payment" desc="Create a customer checkout invoice" onClick={()=>action("Create payment")}/><Quick icon={ArrowUpRight} title="Withdrawals" desc="Crypto withdrawals are disabled" onClick={()=>setPage("Withdrawals")}/><Quick icon={Code2} title="View API docs" desc="Explore integration endpoints" onClick={()=>setPage("API Docs")}/><Quick icon={Webhook} title="Configure webhook" desc="Webhook settings" onClick={()=>setPage("Webhooks")}/></section></div>
+      <section className="panel table-panel"><div className="panel-head"><div><h2>Recent payments</h2><p>Latest verified payment activity</p></div><button className="text-btn" onClick={()=>setPage("Payments")}>View all <ArrowUpRight size={14}/></button></div><PaymentTable rows={summary.recentPayments}/></section></>:<GenericPage page={page} onAction={action}/>}
+      <footer>© 2026 AnimePay <span>•</span> Secure merchant workspace <span className="footer-right"><ShieldCheck size={13}/> Authenticated session</span></footer>
       </div>
     </main>
   </div>;
