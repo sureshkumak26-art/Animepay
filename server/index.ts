@@ -230,6 +230,45 @@ app.post("/api/merchant/login", requireSameOrigin, merchantAuthLimiter, async (r
     return res.status(status >= 500 ? 503 : status).json({ error: error instanceof Error ? error.message : "Sign in failed." });
   }
 });
+app.post("/api/merchant/forgot-password", requireSameOrigin, merchantAuthLimiter, async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
+  try {
+    const redirect = encodeURIComponent("https://animepay.vercel.app/reset-password");
+    await authRequest("recover?redirect_to=" + redirect, { email });
+    return res.json({ ok: true, message: "If an AnimePay account exists for this email, a password reset link has been sent. Please check your inbox and spam folder." });
+  } catch (error) {
+    const status = (error as any)?.status || 400;
+    if (status >= 500) return res.status(503).json({ error: "Password recovery is temporarily unavailable. Please try again later." });
+    // Do not reveal whether an email address is registered.
+    return res.json({ ok: true, message: "If an AnimePay account exists for this email, a password reset link has been sent. Please check your inbox and spam folder." });
+  }
+});
+app.post("/api/merchant/reset-password", requireSameOrigin, merchantAuthLimiter, async (req, res) => {
+  const accessToken = String(req.body?.access_token || "");
+  const password = String(req.body?.password || "");
+  if (!accessToken || accessToken.length > 8192) return res.status(400).json({ error: "Your reset link is invalid or expired. Request a new one." });
+  if (password.length < 10 || password.length > 128) return res.status(400).json({ error: "Use a password between 10 and 128 characters." });
+  const key = supabasePublicKey();
+  if (!supabaseUrl() || !key) return res.status(503).json({ error: "Merchant authentication is not configured on the server." });
+  try {
+    const response = await fetch(supabaseUrl() + "/auth/v1/user", {
+      method: "PUT",
+      headers: { apikey: key, Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    const data: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const status = response.status;
+      return res.status(status === 401 || status === 403 ? 400 : status >= 500 ? 503 : 400).json({
+        error: status === 401 || status === 403 ? "Your reset link is invalid or expired. Request a new one." : "Could not update your password. Please try again."
+      });
+    }
+    return res.json({ ok: true, message: "Password updated successfully. You can now sign in with your new password." });
+  } catch {
+    return res.status(503).json({ error: "Password recovery is temporarily unavailable. Please try again." });
+  }
+});
 app.get("/api/merchant/me", requireMerchant, (req, res) => res.json({ authenticated: true, user: { email: res.locals.merchantUser.email, full_name: res.locals.merchantUser.user_metadata?.full_name || "" }, merchant: res.locals.merchant, role: res.locals.merchantRole }));
 app.post("/api/merchant/logout", requireSameOrigin, async (req, res) => {
   const session = readMerchantSession(req);
