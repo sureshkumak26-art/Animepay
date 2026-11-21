@@ -3,9 +3,11 @@ import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 const app = express();
 app.set("trust proxy", 1);
+app.use(helmet());
 app.use(express.json({ limit: "32kb" }));
 const port = Number(process.env.PORT || 4000);
 const currencies = ["usdttrc20", "usdterc20", "btc", "eth", "usdc"];
