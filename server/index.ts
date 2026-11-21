@@ -9,7 +9,7 @@ const app = express();
 app.set("trust proxy", 1);
 app.use(helmet());
 type RawRequest = Request & { rawBody?: Buffer };
-app.use(express.json({ limit: "64kb", verify: (req, _res, buf) => { (req as RawRequest).rawBody = Buffer.from(buf); } }));
+app.use(express.json({ limit: "2mb", verify: (req, _res, buf) => { (req as RawRequest).rawBody = Buffer.from(buf); } }));
 const port = Number(process.env.PORT || 4000);
 const currencies = ["usdttrc20", "usdterc20", "btc", "eth", "usdc"];
 const SESSION_COOKIE = "animepay_admin";
@@ -54,7 +54,7 @@ async function ensureMerchantForUser(user: MerchantUser) {
     const membership = existing[0];
     if (membership.status === "suspended") throw new Error("This merchant membership is suspended. Contact AnimePay support.");
     if (membership.status === "invited") await db("animepay_merchant_memberships?id=eq." + encodeURIComponent(membership.id), { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "active", updated_at: new Date().toISOString() }) });
-    const merchants: any[] = await db("animepay_merchants?select=id,name,slug,status&id=eq." + encodeURIComponent(membership.merchant_id) + "&limit=1");
+    const merchants: any[] = await db("animepay_merchants?select=id,name,slug,status,logo_url&id=eq." + encodeURIComponent(membership.merchant_id) + "&limit=1");
     if (!merchants.length || merchants[0].status !== "active") throw new Error("This merchant workspace is unavailable.");
     return { merchant: merchants[0], role: membership.role };
   }
@@ -365,6 +365,50 @@ app.patch("/api/admin/merchant-members/:id", requireSameOrigin, requireAdmin, as
   }
 });
 
+
+app.post("/api/merchant/logo", requireSameOrigin, requireMerchant, async (req, res) => {
+  const dataUrl = String(req.body?.image || "");
+  const match = dataUrl.match(/^data:(image\\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return res.status(400).json({ error: "Upload a PNG, JPG or WebP image." });
+  const mime = match[1], buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > 1024 * 1024) return res.status(400).json({ error: "Logo must be smaller than 1 MB." });
+  const valid = (mime === "image/png" && buffer.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) || (mime === "image/jpeg" && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) || (mime === "image/webp" && buffer.toString("ascii",0,4) === "RIFF" && buffer.toString("ascii",8,12) === "WEBP");
+  if (!valid) return res.status(400).json({ error: "The selected file is not a valid supported image." });
+  const ext = mime === "image/jpeg" ? "jpg" : mime.split("/")[1], objectPath = String(res.locals.merchant.id) + "/logo." + ext;
+  try {
+    const upload = await fetch(supabaseUrl() + "/storage/v1/object/animepay-merchant-logos/" + objectPath.split("/").map(encodeURIComponent).join("/"), { method:"PUT", headers:{apikey:supabaseKey(),Authorization:"Bearer "+supabaseKey(),"Content-Type":mime,"x-upsert":"true"}, body:buffer });
+    if (!upload.ok) throw new Error("Logo storage upload failed ("+upload.status+").");
+    const logoUrl = supabaseUrl()+"/storage/v1/object/public/animepay-merchant-logos/"+objectPath.split("/").map(encodeURIComponent).join("/")+"?v="+Date.now();
+    const updated = await db("animepay_merchants?id=eq."+encodeURIComponent(res.locals.merchant.id),{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({logo_url:logoUrl,updated_at:new Date().toISOString()})});
+    return res.json({ok:true,logo_url:updated[0]?.logo_url||logoUrl});
+  } catch(error) { return res.status(502).json({error:error instanceof Error?error.message:"Logo upload failed."}); }
+});
+app.get("/api/merchant/payment-links", requireMerchant, async (_req,res)=>{
+ try { const links=await db("animepay_payment_links?select=id,slug,title,description,price_amount,price_currency,pay_currency,status,created_at&merchant_id=eq."+encodeURIComponent(res.locals.merchant.id)+"&order=created_at.desc"); return res.json({links}); }
+ catch(error){return res.status(503).json({error:error instanceof Error?error.message:"Could not load payment links."});}
+});
+app.post("/api/merchant/payment-links", requireSameOrigin, requireMerchant, async(req,res)=>{
+ const title=String(req.body?.title||"").trim().slice(0,120), description=String(req.body?.description||"").trim().slice(0,500), amount=Number(req.body?.price_amount), payCurrency=String(req.body?.pay_currency||"").toLowerCase();
+ if(title.length<2)return res.status(400).json({error:"Enter a link title with at least 2 characters."});
+ if(!Number.isFinite(amount)||amount<=0||amount>100000)return res.status(400).json({error:"Enter a valid USD amount."});
+ if(!currencies.includes(payCurrency))return res.status(400).json({error:"Choose a supported payment currency."});
+ const slug=randomUUID().replace(/-/g,"").slice(0,20);
+ try {const rows=await db("animepay_payment_links",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({merchant_id:res.locals.merchant.id,slug,title,description:description||null,price_amount:amount,price_currency:"usd",pay_currency:payCurrency,status:"active"})});return res.status(201).json({link:rows[0],url:"https://animepay.vercel.app/pay/"+slug});}
+ catch(error){return res.status(503).json({error:error instanceof Error?error.message:"Could not create payment link."});}
+});
+app.patch("/api/merchant/payment-links/:id", requireSameOrigin, requireMerchant, async(req,res)=>{
+ const id=String(req.params.id||"");if(!/^[0-9a-f-]{36}$/i.test(id)||!["active","disabled"].includes(String(req.body?.status)))return res.status(400).json({error:"Invalid payment link update."});
+ try{const rows=await db("animepay_payment_links?id=eq."+encodeURIComponent(id)+"&merchant_id=eq."+encodeURIComponent(res.locals.merchant.id),{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({status:req.body.status,updated_at:new Date().toISOString()})});if(!rows.length)return res.status(404).json({error:"Payment link not found."});return res.json({link:rows[0]});}
+ catch(error){return res.status(503).json({error:error instanceof Error?error.message:"Could not update payment link."});}
+});
+app.get("/api/public/payment-links/:slug", async(req,res)=>{
+ try{const rows=await db("animepay_payment_links?select=slug,title,description,price_amount,price_currency,pay_currency,status,merchant_id&slug=eq."+encodeURIComponent(String(req.params.slug))+"&status=eq.active&limit=1");if(!rows.length)return res.status(404).json({error:"This payment link is unavailable."});const merchants=await db("animepay_merchants?select=name,logo_url,status&id=eq."+encodeURIComponent(rows[0].merchant_id)+"&limit=1");if(!merchants.length||merchants[0].status!=="active")return res.status(404).json({error:"This payment link is unavailable."});const {merchant_id,...link}=rows[0];return res.json({link,merchant:merchants[0]});}
+ catch(error){return res.status(503).json({error:error instanceof Error?error.message:"Payment link is temporarily unavailable."});}
+});
+app.post("/api/public/payment-links/:slug/checkout", requireSameOrigin, async(req,res)=>{
+ try{const links=await db("animepay_payment_links?select=*&slug=eq."+encodeURIComponent(String(req.params.slug))+"&status=eq.active&limit=1"),link=links[0];if(!link)return res.status(404).json({error:"This payment link is unavailable."});const apiKey=process.env.NOWPAYMENTS_API_KEY||"";if(!apiKey||!process.env.NOWPAYMENTS_IPN_SECRET)return res.status(503).json({error:"Payment processing is not configured."});const orderId="APL-"+randomUUID();await db("animepay_payments",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({order_id:orderId,merchant_id:link.merchant_id,price_amount:link.price_amount,price_currency:link.price_currency,pay_currency:link.pay_currency,payment_status:"creating"})});const response=await fetch("https://api.nowpayments.io/v1/payment",{method:"POST",headers:{"x-api-key":apiKey,"Content-Type":"application/json"},body:JSON.stringify({price_amount:link.price_amount,price_currency:link.price_currency,pay_currency:link.pay_currency,order_id:orderId,order_description:link.title.slice(0,120),ipn_callback_url:"https://animepay.vercel.app/api/nowpayments/ipn"})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.payment_id)throw new Error(data.message||"Provider could not create this payment.");await db("animepay_payments?order_id=eq."+encodeURIComponent(orderId),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({payment_id:String(data.payment_id),pay_amount:data.pay_amount??null,pay_address:data.pay_address??null,invoice_url:data.invoice_url??null,payment_status:data.payment_status||"waiting",provider_payload:data})});return res.status(201).json({invoice_url:data.invoice_url,order_id:orderId,pay_amount:data.pay_amount,pay_currency:data.pay_currency||link.pay_currency,pay_address:data.pay_address});}
+ catch(error){return res.status(502).json({error:error instanceof Error?error.message:"Could not start payment."});}
+});
 app.post("/api/checkout", requireMerchant, async (req, res) => {
   const apiKey = process.env.NOWPAYMENTS_API_KEY || "";
   if (!apiKey || !process.env.NOWPAYMENTS_IPN_SECRET) return res.status(503).json({ error: "NOWPayments credentials are not configured yet." });
