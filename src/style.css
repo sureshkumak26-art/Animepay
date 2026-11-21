@@ -22,3 +22,6 @@
 
 .merchant-logout{margin-top:10px;width:100%;padding:10px 12px;border:1px solid #302b43;border-radius:8px;background:#171522;color:#b9aaff;text-align:left;font:600 11px 'DM Sans';cursor:pointer}.merchant-logout:hover{background:#24203a}
 .chart-empty{min-height:170px;display:grid;place-items:center;text-align:center;padding:25px;color:#777e91;font-size:11px;line-height:1.7;border:1px dashed #2a3040;border-radius:9px;background:#0d111a}
+
+
+.checkout-amount-input{width:100%;height:42px;margin:-2px 0 17px;padding:0 12px;border:1px solid #2f3548;border-radius:8px;background:#0b101a;color:#f0eff8;font:12px 'DM Sans';outline:none}.checkout-amount-input:focus{border-color:#9278f5}.checkout-result{display:grid;gap:8px;margin-top:13px;padding:12px;border:1px solid #285a4a;border-radius:9px;background:#142c27;color:#a1e8cf;font-size:10px}.checkout-result span{color:#9ab8ac}.checkout-result a{width:max-content;color:#c7baff;text-decoration:none;font-weight:700}.qr-placeholder code{max-width:100%;overflow-wrap:anywhere;margin-top:12px;padding:9px;border-radius:7px;background:#0a0d15;color:#c7baff;font-size:9px;line-height:1.6}.checkout-footer a{color:#b8a6ff;text-decoration:none}
