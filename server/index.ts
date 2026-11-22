@@ -500,6 +500,7 @@ app.post("/api/nowpayments/ipn", async (req: RawRequest, res) => {
 });
 app.post("/api/withdrawals", (_req, res) => res.status(501).json({ error: "Withdrawals remain disabled until a separate secure payout workflow, compliance checks, limits and admin approval are implemented." }));
 
+app.use("/api", (_req, res) => res.status(404).json({ error: "AnimePay API endpoint not found. Please refresh and try again." }));
 app.use(express.static(path.resolve("dist")));
 app.get("*", (_req, res) => res.sendFile(path.resolve("dist/index.html")));
 if (process.env.VERCEL !== "1") app.listen(port, "0.0.0.0", () => console.log(`AnimePay API listening on ${port}`));
